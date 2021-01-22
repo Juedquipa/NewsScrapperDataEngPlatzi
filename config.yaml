@@ -1,5 +1,16 @@
 news_sites:
         eluniversal:
                 url: https://eluniversal.com.co
+                queries:
+                        homepage_article_links = '.info a'
+                        article_tittle = '.titulo-interna .priority-content'
+                        article_body = '.paragraph'
+                        article_author = '.author'
         elpais:
-url: https://elpais.com/america
+                url: https://elpais.com/america
+                queries:
+                        homepage_article_links = 'h2.c_h.headline.\|.color_gray_ultra_dark.font_secondary.width_full.headline_md.c_h__md a'
+                        article_tittle = 'h1.a_t'
+                        article_subtittle = 'h2.a_st'
+                        article_body = '.a_b.article_body p'
+                        article_author = 'a.a_aut_n'
