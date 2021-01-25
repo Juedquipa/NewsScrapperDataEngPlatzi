@@ -1,12 +1,20 @@
 import argparse
 import logging
+from os import write
 logging.basicConfig(level=logging.INFO)
+import re
+import datetime
+import csv
+
+from requests.exceptions import HTTPError
+from urllib3.exceptions import MaxRetryError
 
 import news_page_objects as news
 from common import config
 
-
 logger = logging.getLogger(__name__)
+good_link = re.compile(r'^https?://.+/.+$') # RE for whole links
+root_link = re.compile(r'^/.+$') # RE for links based on root
 
 
 def _news_scraper(news_site_uid):
@@ -14,10 +22,66 @@ def _news_scraper(news_site_uid):
 
     logging.info('Beginning scraper for {}'.format(host))
     logging.info('Finding links in homepage...')
-    homepage = news.HomePage(news_site_uid)
+    homepage = news.HomePage(news_site_uid, host)
 
+    articles = []
     for link in homepage.article_links:
+        article = _fetch_article(news_site_uid, host, link)
+
+        if article:
+            logger.info('Article fetched')
+            articles.append(article)
+            print(article.tittle)
+            break
+
+    print(len(articles))
+
+    _save_articles(news_site_uid, articles)
+
+
+def _save_articles(news_site_uid, articles):
+    now = datetime.datetime.now().strftime('%Y_%m_%d')
+    file_name = '{}_{}_articles.csv'.format(news_site_uid, now)
+    csv_headers = list(filter(lambda property: not property.startswith('_'), dir(articles[0])))
+
+    with open(file_name, mode ='w+', encoding= "utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(csv_headers)
+
+        for article in articles:
+            row = [str(getattr(article, prop)) for prop in csv_headers]
+            writer.writerow(row)
+
+
+def _fetch_article(news_site_uid, host, link):
+    logger.info('Start fetching article at {}'.format(link))
+
+    article = None
+
+    try:
+        article=news.ArticlePage(news_site_uid, _build_link(host, link))
+
+    except (HTTPError, MaxRetryError) as e:
+        logger.warning('Error while fetching the article', exc_info=False)
+
+    if article and not article.body:
+        print('No body')
+        return None
+
+    return article
+
+
+def _build_link(host, link):
+    if good_link.match(link):
         print(link)
+        return link
+    elif root_link.match(link):
+        print(link)
+        return '{}{}'.format(host, link)
+    else:
+        print(link)
+        return '{}/{}'.format(host, link)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
